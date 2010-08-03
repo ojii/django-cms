@@ -1,5 +1,5 @@
 from django.contrib import admin
-from example.sampleapp.models import Picture, Category
+from models import Picture, Category
 
 class PictureInline(admin.StackedInline):
     model = Picture

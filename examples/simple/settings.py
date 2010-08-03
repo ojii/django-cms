@@ -13,7 +13,7 @@ CACHE_BACKEND = 'locmem:///'
 MANAGERS = ADMINS
 
 DATABASE_ENGINE = 'sqlite3'
-DATABASE_NAME = 'cms_simple.sqlite'
+DATABASE_NAME = os.path.join(PROJECT_DIR, 'cms_simple.sqlite')
 
 TEST_DATABASE_CHARSET = "utf8"
 TEST_DATABASE_COLLATION = "utf8_general_ci"
@@ -69,7 +69,7 @@ MIDDLEWARE_CLASSES = (
     
 )
 
-ROOT_URLCONF = 'example.urls'
+ROOT_URLCONF = 'simple.urls'
 
 
 TEMPLATE_DIRS = (
@@ -97,8 +97,10 @@ INSTALLED_APPS = (
     'cms.plugins.twitter',
     'cms.plugins.inherit',
     'mptt',
-    'example.sampleapp',
+    'simple.sampleapp',
+    'appmedia',
     'south',
+    'shared',
 )
 
 gettext = lambda s: s
