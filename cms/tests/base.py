@@ -334,35 +334,15 @@ class CMSTestCase(TestCase):
         return plugin.pk
     
     def publish_page(self, page, approve=False, user=None, published_check=True):
-        if user:
-            self.login_user(user)
-        
-        if published_check and not approve:
-            # must have public object now
-            self.assertFalse(page.publisher_public)
-            self.assertFalse(page.published)
-            
-        # publish / approve page by master
-        response = self.client.post(URL_CMS_PAGE + "%d/change-status/" % page.pk, {1 :1})
-        self.assertEqual(response.status_code, 200)
-        
-        if not approve:
-            page = self.reload_page(page)
-            if published_check:
-                # must have public object now
-                self.assertTrue(page.publisher_public, "Page '%s' has no publisher_public" % page)
-                # and public object must be published
-                self.assertTrue(page.publisher_public.published)
-            return page
-        
-        # approve
-        page = self.approve_page(page)
-        if published_check:
-            # must have public object now
-            self.assertTrue(page.publisher_public, "Page '%s' has no publisher_public" % page)
-            # and public object must be published
-            self.assertTrue(page.publisher_public.published)
-        
+        _thread_locals.user = user
+        page.publish()
+        del _thread_locals.user
+        if approve:
+            if user:
+                self.login_user(user)
+            page = self.approve_page(page)
+        else:
+            page = self.reload_page(page)    
         return page
     
     def approve_page(self, page):
