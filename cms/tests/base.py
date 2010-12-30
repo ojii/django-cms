@@ -337,12 +337,11 @@ class CMSTestCase(TestCase):
         _thread_locals.user = user
         page.publish()
         del _thread_locals.user
+        page = self.reload_page(page)
         if approve:
             if user:
                 self.login_user(user)
             page = self.approve_page(page)
-        else:
-            page = self.reload_page(page)    
         return page
     
     def approve_page(self, page):
