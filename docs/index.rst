@@ -18,6 +18,7 @@ Getting Started
     :numbered:
 
     installation
+    upgrading
     tutorial
     using_south
     configuration
