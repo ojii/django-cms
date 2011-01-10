@@ -43,8 +43,19 @@ def _build_nodes_inner_for_one_menu(nodes, menu_class_name):
             # We need to create the namespace dict to avoid KeyErrors
             done_nodes[node.namespace] = {} 
         
+        # Check if the tree has been built manually
+        if node.parent_id and getattr(node, 'parent') and node.parent_id == node.parent.id:
+            if not hasattr(node, 'children'):
+                node.parent.children = [node]
+            elif node not in node.parent.children:
+                node.parent.children.append(node)
+            if not node.parent_namespace:
+                if node.parent.namespace:
+                    node.parent_namespace = node.parent.namespace
+                else:
+                    node.parent_namespace = menu_class_name
         # If we have seen the parent_id already...
-        if node.parent_id in done_nodes[node.namespace] :
+        elif node.parent_id in done_nodes[node.namespace]:
             # Implicit parent namespace by menu.__name__
             if not node.parent_namespace:
                 node.parent_namespace = menu_class_name

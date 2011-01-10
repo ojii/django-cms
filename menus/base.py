@@ -36,8 +36,14 @@ class NavigationNode(object):
         self.title = title
         self.url = self._remove_current_root(url)
         self.id = id
-        self.parent_id = parent_id
-        self.parent_namespace = parent_namespace
+        if isinstance(parent_id, NavigationNode):
+            self.parent = parent_id
+            self.parent_id = self.parent.id
+            self.parent.children.append(self)
+            self.parent_namespace = self.parent.namespace
+        else:
+            self.parent_id = parent_id
+            self.parent_namespace = parent_namespace
         self.visible = visible
         if attr:
             self.attr = attr

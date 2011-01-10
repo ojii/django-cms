@@ -496,3 +496,11 @@ class MenusTestCase(CMSTestCase):
     def test_25_utils_cut_levels(self):
         tree_nodes, flat_nodes = self._get_nodes()
         self.assertEqual(cut_levels(tree_nodes, 1), [flat_nodes[1]])
+        
+    def test_26_oo_navigation_nodes(self):
+        parent = NavigationNode('Parent', '/parent/', 1)
+        child = NavigationNode('Child', '/parent/child/', 2, parent)
+        nodes = [parent, child]
+        menu_class_name = "Test"
+        final_list = _build_nodes_inner_for_one_menu(nodes, menu_class_name)
+        self.assertEqual(len(final_list), 2)
