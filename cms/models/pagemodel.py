@@ -128,39 +128,123 @@ class Page(Mptt):
         # check the slugs
         check_title_slugs(self)
         
-    def copy_page(self, target, site, position='first-child', copy_permissions=True, copy_moderation=True, public_copy=False):
+    def copy_page(self, target, site, position='first-child',
+                  copy_permissions=True, copy_moderation=True,
+                  public_copy=False):
         """
         copy a page [ and all its descendants to a new location ]
-        Doesn't checks for add page permissions anymore, this is done in PageAdmin.
+        Doesn't checks for add page permissions anymore, this is done in
+        PageAdmin.
         
-        Note: public_copy was added in order to enable the creation of a copy for creating the public page during
-        the publish operation as it sets the publisher_is_draft=False.
+        Note: public_copy was added in order to enable the creation of a copy
+        for creating the public page during the publish operation as it sets the
+        publisher_is_draft=False.
         """
+        if public_copy:
+            return self._copy_public_page(target, site, position,
+                                          copy_permissions, copy_moderation)
+        else:
+            return self._copy_draft_page(target, site, position,
+                                         copy_permissions, copy_moderation)
+            
+    def _copy_public_page(self, target, site, position, copy_permissions,
+                          copy_moderation):
+        """
+        Copy a *public* page to a new location.
+        """
+        newpage = copy.copy(self)
+            
+        titles = list(newpage.title_set.all())
+        # get all current placeholders (->plugins)
+        placeholders = list(newpage.placeholders.all())
+        origin_id = newpage.id
+        # create a copy of this page by setting pk = None (=new instance)
+        newpage.old_pk = newpage.pk
+        newpage.pk = None
+        newpage.level = None
+        newpage.rght = None
+        newpage.lft = None
+        newpage.tree_id = None
+        newpage.published = False
+        newpage.publisher_status = Page.MODERATOR_CHANGED
+        newpage.publisher_public_id = None
+        newpage.site = site
+        newpage.published = True
+        newpage.publisher_is_draft=False
+        newpage.publisher_status = Page.MODERATOR_APPROVED
+        # we need to set relate this new public copy to its draft page (self)
+        newpage.publisher_public = self
+        
+        # code taken from Publisher publish() overridden here as we need to save the page
+        # before we are able to use the page object for titles, placeholders etc.. below
+        # the method has been modified to return the object after saving the instance variable
+        page_copy = self._publisher_save_public(newpage)
+
+        # copy moderation, permissions if necessary
+        if settings.CMS_PERMISSION and copy_permissions:
+            from cms.models.permissionmodels import PagePermission
+            for permission in PagePermission.objects.filter(page__id=origin_id):
+                permission.pk = None
+                permission.page = page_copy
+                permission.save()
+        if settings.CMS_MODERATOR and copy_moderation:
+            from cms.models.moderatormodels import PageModerator
+            for moderator in PageModerator.objects.filter(page__id=origin_id):
+                moderator.pk = None
+                moderator.page = page_copy
+                moderator.save()
+        
+        # copy titles of this page
+        for title in titles:
+            title.pk = None # setting pk = None creates a new instance
+            title.publisher_public_id = None
+            title.published = False
+            title.page = page_copy
+            title.save()
+            
+        # copy the placeholders (and plugins on those placeholders!)
+        for ph in placeholders:
+            plugins = list(ph.cmsplugin_set.all().order_by('tree_id', '-rght'))
+            try:
+                ph = page_copy.placeholders.get(slot=ph.slot)
+            except Placeholder.DoesNotExist:
+                ph.pk = None # make a new instance
+                ph.save()
+                page_copy.placeholders.add(ph)
+            if plugins:
+                copy_plugins_to(plugins, ph)
+                    
+        # invalidate the menu for this site
+        menu_pool.clear(site_id=site.pk)
+        return page_copy   # return the page_copy or None
+    
+    def _copy_draft_page(self, target, site, position, copy_permissions,
+                          copy_moderation):
+        """
+        Copy a *draft* page (and all it's descendants) to a new location.
+        """
+        
         from cms.utils.moderator import update_moderation_message
         
         page_copy = None
-        
-        if public_copy:
-            # create a copy of the draft page - existing code loops through pages so added it to a list 
-            pages = [copy.copy(self)]            
-        else:
-            pages = [self] + list(self.get_descendants().order_by('-rght'))
+        pages = [self] + list(self.get_descendants().order_by('-rght'))
             
-        if not public_copy:    
-            site_reverse_ids = Page.objects.filter(site=site, reverse_id__isnull=False).values_list('reverse_id', flat=True)
+        site_reverse_ids = Page.objects.filter(
+            site=site, reverse_id__isnull=False
+        ).values_list('reverse_id', flat=True)
         
-            if target:
-                target.old_pk = -1
-                if position == "first-child":
-                    tree = [target]
-                elif target.parent_id:
-                    tree = [target.parent]
-                else:
-                    tree = []
+        if target:
+            target.old_pk = -1
+            if position == "first-child":
+                tree = [target]
+            elif target.parent_id:
+                tree = [target.parent]
             else:
                 tree = []
-            if tree:
-                tree[0].old_pk = tree[0].pk
+        else:
+            tree = []
+        if tree:
+            tree[0].old_pk = tree[0].pk
             
         first = True
         # loop over all affected pages (self is included in descendants)
@@ -180,47 +264,30 @@ class Page(Mptt):
             page.publisher_status = Page.MODERATOR_CHANGED
             page.publisher_public_id = None
             # only set reverse_id on standard copy
-            if not public_copy:
-                if page.reverse_id in site_reverse_ids:
-                    page.reverse_id = None
-                if first:
-                    first = False
-                    if tree:
-                        page.parent = tree[0]
-                    else:
-                        page.parent = None
-                    page.insert_at(target, position)
+            if page.reverse_id in site_reverse_ids:
+                page.reverse_id = None
+            if first:
+                first = False
+                if tree:
+                    page.parent = tree[0]
                 else:
-                    count = 1
-                    found = False
-                    for prnt in tree:
-                        if prnt.old_pk == page.parent_id:
-                            page.parent = prnt
-                            tree = tree[0:count]
-                            found = True
-                            break
-                        count += 1
-                    if not found:
-                        page.parent = None
-                tree.append(page)
+                    page.parent = None
+                page.insert_at(target, position)
+            else:
+                count = 1
+                found = False
+                for prnt in tree:
+                    if prnt.old_pk == page.parent_id:
+                        page.parent = prnt
+                        tree = tree[0:count]
+                        found = True
+                        break
+                    count += 1
+                if not found:
+                    page.parent = None
+            tree.append(page)
             page.site = site
-             
-            # override default page settings specific for public copy
-            if public_copy:
-                page.published = True
-                page.publisher_is_draft=False
-                page.publisher_status = Page.MODERATOR_APPROVED
-                # we need to set relate this new public copy to its draft page (self)
-                page.publisher_public = self
-                
-                # code taken from Publisher publish() overridden here as we need to save the page
-                # before we are able to use the page object for titles, placeholders etc.. below
-                # the method has been modified to return the object after saving the instance variable
-                page = self._publisher_save_public(page)
-                page_copy = page    # create a copy used in the return
-            else:    
-                # only need to save the page if it isn't public since it is saved above otherwise
-                page.save()
+            page.save()
 
             # copy moderation, permissions if necessary
             if settings.CMS_PERMISSION and copy_permissions:
@@ -237,8 +304,7 @@ class Page(Mptt):
                     moderator.save()
                     
             # update moderation message for standard copy
-            if not public_copy:
-                update_moderation_message(page, unicode(_('Page was copied.')))
+            update_moderation_message(page, unicode(_('Page was copied.')))
             
             # copy titles of this page
             for title in titles:
@@ -248,8 +314,7 @@ class Page(Mptt):
                 title.page = page
                 
                 # create slug-copy for standard copy
-                if not public_copy:
-                    title.slug = get_available_slug(title)
+                title.slug = get_available_slug(title)
                 title.save()
                 
             # copy the placeholders (and plugins on those placeholders!)
@@ -384,9 +449,10 @@ class Page(Mptt):
 
         if self._publisher_can_publish():
 
-            ########################################################################
-            # delete the existing public page using transaction block to ensure save() and delete() do not conflict
-            # the draft version was being deleted if I replaced the save() below with a delete()
+            ####################################################################
+            # delete the existing public page using transaction block to ensure
+            # save() and delete() do not conflict the draft version was being
+            # deleted if I replaced the save() below with a delete()
             try:
                 old_public = self.get_public_object()
                 old_public.publisher_state = self.PUBLISHER_STATE_DELETE
@@ -400,7 +466,14 @@ class Page(Mptt):
                 transaction.commit()
 
             # we hook into the modified copy_page routing to do the heavy lifting of copying the draft page to a new public page
-            new_public = self.copy_page(target=None, site=self.site, copy_moderation=False, position=None, copy_permissions=False, public_copy=True)
+            new_public = self.copy_page(
+                target=None,
+                site=self.site,
+                copy_moderation=False,
+                position=None,
+                copy_permissions=False,
+                public_copy=True
+            )
 
             # taken from Publisher - copy_page needs to call self._publisher_save_public(copy) for mptt insertion
             # insert_at() was maybe calling _create_tree_space() method, in this
