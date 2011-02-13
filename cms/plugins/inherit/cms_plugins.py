@@ -48,13 +48,12 @@ class InheritPagePlaceholderPlugin(CMSPluginBase):
         plugin_output = []
         template_vars['parent_plugins'] = plugins 
         for plg in plugins:
-            tmpctx = copy.copy(context)
-            tmpctx.update(template_vars)
+            context.push()
+            context.update(template_vars)
             inst, name = plg.get_plugin_instance()
-            outstr = inst.render_plugin(tmpctx, placeholder)
+            outstr = inst.render_plugin(context, placeholder)
             plugin_output.append(outstr)
-            if request and hasattr(request, 'placeholder_media'):
-                request.placeholder_media += get_plugin_media(request, context, inst)
+            context.pop()
         template_vars['parent_output'] = plugin_output
         context.update(template_vars)
         return context

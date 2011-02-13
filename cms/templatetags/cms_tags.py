@@ -13,6 +13,7 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.core.mail import mail_managers
+from django.template import TemplateSyntaxError
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from itertools import chain
@@ -141,9 +142,6 @@ def get_placeholder_content(context, request, current_page, name, inherit):
             continue
         if not get_plugins(request, placeholder):
             continue
-        if hasattr(request, 'placeholder_media'):
-            request.placeholder_media = reduce(operator.add, [request.placeholder_media, placeholder.get_media(request, context)])
-        #request.placeholder_media += placeholder.get_media(request, context)
         content = render_placeholder(placeholder, context, name)
         if content:
             return content
@@ -407,24 +405,11 @@ class PluginsMedia(Tag):
     )
     
     def render_tag(self, context, page_lookup):
-        if not 'request' in context:
-            return ''
-        request = context['request']
-        from cms.plugins.utils import get_plugins_media
-        plugins_media = None
-        if page_lookup:
-            page = _get_page_by_untyped_arg(page_lookup, request, get_site_id(None))
-            plugins_media = get_plugins_media(request, context, page)
-        else:
-            page = request.current_page
-            if page == "dummy":
-                return ''
-            # make sure the plugin cache is filled
-            plugins_media = get_plugins_media(request, context, request._current_page_cache)
-        if plugins_media:
-            return plugins_media.render()
-        else:
-            return u''
+        raise TemplateSyntaxError(
+            "The plugins_media template tag has been deprecated and removed in "
+            "favor of django-sekizai. For more information, please refer to "
+            "the documentation."
+        )
 
     def __repr__(self):
         return "<PluginsMediaNode Node: %s>" % getattr(self, 'name', '')

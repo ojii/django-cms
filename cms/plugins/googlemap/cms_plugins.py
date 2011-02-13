@@ -17,7 +17,4 @@ class GoogleMapPlugin(CMSPluginBase):
         })
         return context
     
-    def get_plugin_media(self, request, context, plugin):
-        return Media(js = ('http://maps.google.com/maps/api/js?sensor=true',))
-
 plugin_pool.register_plugin(GoogleMapPlugin)
