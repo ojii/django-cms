@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import with_statement
-from cms.api import create_page, publish_page, approve_page, add_plugin
+from cms.api import (create_page, publish_page, approve_page, add_plugin, 
+    create_page_user, assign_user_to_page)
 from cms.models import Page, CMSPlugin
+from cms.models.moderatormodels import ACCESS_DESCENDANTS
 from cms.test_utils.testcases import (URL_CMS_PAGE_ADD, URL_CMS_PLUGIN_REMOVE, 
     SettingsOverrideTestCase, URL_CMS_PLUGIN_ADD)
+from cms.test_utils.util.fixtures import fixturize
 from cms.utils.permissions import has_generic_permission
 from django.contrib.auth.models import User
 
@@ -38,7 +41,6 @@ class PermissionModeratorTestCase(SettingsOverrideTestCase):
             - created by super
             - master can add/change/delete on it and descendants 
     """
-    fixtures = ['permmod.json']
     settings_overrides = {
         'CMS_PERMISSION': True,
         'CMS_MODERATOR': True,
@@ -49,6 +51,63 @@ class PermissionModeratorTestCase(SettingsOverrideTestCase):
         'master': 2,
         'slave': 3,
     }
+    
+    @fixturize
+    def setUp(self):
+        # create super user
+        self.user_super = User(username="super", is_staff=True, is_active=True, 
+            is_superuser=True)
+        self.user_super.set_password("super")
+        self.user_super.save()
+        self.login_user(self.user_super)
+        
+        self.home_page = create_page("home", "nav_playground.html", "en",
+                                     created_by=self.user_super)
+        
+        # master page & master user
+        
+        self.master_page = create_page("master", "nav_playground.html", "en")
+
+        # create master user
+        master = User(username="master", email="master@django-cms.org")
+        master.set_password("master")
+        master.save()
+        self.user_master = create_page_user(self.user_super, master, grant_all=True)
+        
+        # assign master user under home page
+        assign_user_to_page(self.home_page, self.user_master,
+                            grant_on=ACCESS_DESCENDANTS, grant_all=True)
+        
+        # and to master page
+        assign_user_to_page(self.master_page, self.user_master, grant_all=True)
+        
+        # slave page & slave user
+        
+        self.slave_page = create_page("slave-home", "nav_playground.html", "en",
+                          parent=self.master_page, created_by=self.user_super)
+        slave = User(username='slave', email='slave@django-cms.org')
+        slave.set_password('slave')
+        slave.save()
+        self.user_slave = create_page_user(self.user_super, slave,  can_add_page=True,
+                                    can_change_page=True, can_delete_page=True)
+        
+        assign_user_to_page(self.slave_page, self.user_slave, grant_all=True)
+        
+        # create page_a - sample page from master
+        
+        page_a = create_page("pageA", "nav_playground.html", "en",
+                             created_by=self.user_super)
+        assign_user_to_page(page_a, self.user_master, 
+            can_add=True, can_change=True, can_delete=True, can_publish=True, 
+            can_move_page=True, can_moderate=True)
+        
+        # publish after creating all drafts
+        publish_page(self.home_page, self.user_super)
+        publish_page(self.master_page, self.user_super)
+        # logg in as master, and request moderation for slave page and descendants
+        self.request_moderation(self.slave_page, 7)
+        
+        self.client.logout()
     
     def _add_plugin(self, user, page):
         """
@@ -74,7 +133,8 @@ class PermissionModeratorTestCase(SettingsOverrideTestCase):
         self.assertEqual(response.status_code, status_code)
     
     def test_02_master_can_add_page_to_root(self, status_code=403):
-        self.login_user(User.objects.get(username='master'))
+        user = User.objects.get(username='master')
+        self.login_user(user)
         response = self.client.get(URL_CMS_PAGE_ADD)
         self.assertEqual(response.status_code, status_code)
         
