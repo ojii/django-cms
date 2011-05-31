@@ -13,7 +13,8 @@ reuse_env=true
 disable_coverage=true
 django=12
 
-python="python" # to ensure this script works if no python option is specified
+python="pypy" # to ensure this script works if no python option is specified
+
 while [ "$index" -lt "$num_args" ]
 do
     case "${args[$index]}" in
@@ -23,10 +24,6 @@ do
 
         "-r"|"--rebuild-env")
             reuse_env=false
-            ;;
-
-        "-c"|"--with-coverage")
-            disable_coverage=false
             ;;
          
         "-d"|"--django")
@@ -48,7 +45,6 @@ do
             echo ""
             echo "flags:"
             echo "    -f, --failfast - abort at first failing test"
-            echo "    -c, --with-coverage - enables coverage"
             echo "    -r, --rebuild-env - run buildout before the tests"
             echo "    -d, --django <version> - run tests against a django version, options: 12, 13 or trunk"
             echo "    -p, --python /path/to/python - python version to use to run the tests"
@@ -105,17 +101,8 @@ else
     echo "Running cms test $suite."
 fi
 
-if [ $disable_coverage == false ]; then
-    ./bin/coverage run --rcfile=.coveragerc project/manage.py test $suite $failfast
-    retcode=$?
-
-    echo "Post test actions..."
-    ./bin/coverage xml
-    ./bin/coverage html
-else
-    ./bin/django test $suite $failfast
-    retcode=$?
-fi
+./bin/django test $suite $failfast
+retcode=$?
 cd ..
 echo "done"
 exit $retcode
