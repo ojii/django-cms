@@ -1,0 +1,1 @@
+from cms.selenium_tests.toolbar import ToolbarTests

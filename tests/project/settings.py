@@ -99,6 +99,7 @@ INSTALLED_APPS = (
     'cms.plugins.twitter',
     'cms.plugins.inherit',
     'mptt',
+    'project',
     'project.sampleapp',
     'project.placeholderapp',
     'project.pluginapp',
