@@ -164,71 +164,11 @@ else clause.
     for subclassed models. If you use all core plugins, this includes:
     ``file``, ``flash``, ``googlemap``, ``link``, ``picture``, ``snippetptr``,
     ``teaser``, ``twittersearch``, ``twitterrecententries`` and ``video``.
-    
-
-*********
-OLD PARTS
-*********
-
-
-Plugin Model
-============
-
-First create a model that links to the gallery via a
-:class:`~django.db.models.ForeignKey` field::
-
-    from cms.models import CMSPlugin
-
-    class GalleryPlugin(CMSPlugin):
-        gallery = models.ForeignKey(Gallery)
-
-Be sure that your model inherits the :class:`cms.models.pluginmodel.CMSPlugin`
-class. The plugin model can have any number of fields you want. They are the
-fields that get displayed if you edit the plugin.
-
-.. warning::
-
-    :class:`CMSPlugin` subclasses cannot be further subclassed, if you want to make
-    a reusable plugin model, make an abstract base model which does not extend
-    :class:`CMSPlugin` and subclass this abstract model as well as
-    :class:`CMSPlugin` in your real plugin model.
-    Further note that you cannot name your model fields the same as any plugin's
-    lowercased model name you use is called, due to the implicit one to one
-    relation Django uses for subclassed models. This includes but is not limited
-    to ``text`` if you have the text CMS plugin enabled.
-
-Now models.py looks like the following::
-
-    from django.db import models
-    from cms.models import CMSPlugin
-
-    class Gallery(models.Model):
-        parent = models.ForeignKey('self', blank=True, null=True)
-        name = models.CharField(max_length=30)
-
-        def __unicode__(self):
-            return self.name
-
-        def get_absolute_url(self):
-            return reverse('gallery_view', args=[self.pk])
-
-        class Meta:
-            verbose_name_plural = 'gallery'
-
-
-    class Picture(models.Model):
-        gallery = models.ForeignKey(Gallery)
-        image = models.ImageField(upload_to="uploads/images/")
-        description = models.CharField(max_length=60)
-
-
-    class GalleryPlugin(CMSPlugin):
-        gallery = models.ForeignKey(Gallery)
 
 
 
 Handling Relations
-------------------
+==================
 
 If your custom plugin has foreign key or many-to-many relations you are
 responsible for copying those if necessary whenever the CMS copies the plugin.
@@ -264,129 +204,17 @@ Your full model now::
             self.sections = oldinstance.sections.all()
 
 
-cms_plugins.py
-==============
-
-After that create in the application folder (the same one where ``models.py``
-is) a file called ``cms_plugins.py``.
-
-In there write the following::
-
-    from cms.plugin_base import CMSPluginBase
-    from cms.plugin_pool import plugin_pool
-    from models import GalleryPlugin
-    from django.utils.translation import ugettext as _
-
-    class CMSGalleryPlugin(CMSPluginBase):
-        model = GalleryPlugin
-        name = _("Gallery")
-        render_template = "gallery/gallery.html"
-
-        def render(self, context, instance, placeholder):
-            context.update({
-                'gallery':instance.gallery,
-                'object':instance,
-                'placeholder':placeholder
-            })
-            return context
-
-    plugin_pool.register_plugin(CMSGalleryPlugin)
-
-
-:class:`cms.plugin_base.CMSPluginBase` itself inherits from
-:class:`django.contrib.admin.ModelAdmin` so you can use all the things
-(inlines for example) you would use in a regular admin class. For more 
-information see the `Django admin documentation`_.
-
-
-For a list of all the options you have on :class:`CMSPluginBase` have a look at
-the plugin reference
-
-.. note::
-
-    If at some point you want to remove this plugin after deleting the cms_plugins.py
-    there is a cms management command called uninstall plugins
-    that removes all instances of the specified plugin(s) by name.
-    eg. ``manage.py cmsmanage uninstall plugins CMSGalleryPlugin``.
-    To find all names for uninstallable plugins there is a command for this aswell
-    ``manage.py cmsmanage list plugins``.
-    
-Template
-========
-
-Now create a ``gallery.html`` template in ``templates/gallery/`` and write the
-following in there:
-
-.. code-block:: html+django
-
-    {% for image in gallery.picture_set.all %}
-        <img src="{{ image.image.url }}" alt="{{ image.description }}" />
-    {% endfor %}
-
-Add a file ``admin.py`` in your plugin root-folder and insert the following::
-
-    from django.contrib import admin
-    from cms.admin.placeholderadmin import PlaceholderAdmin
-    from models import Gallery,Picture
-
-    class PictureInline(admin.StackedInline):
-        model = Picture
-
-    class GalleryAdmin(admin.ModelAdmin):
-        inlines = [PictureInline]
-
-    admin.site.register(Gallery, GalleryAdmin)
-
-
-Now go into the admin create a gallery and afterwards go into a page and add a
-gallery plugin and some pictures should appear in your page.
-
-Limiting Plugins per Placeholder
-================================
-
-You can limit in which placeholder certain plugins can appear. Add a
-:setting:`CMS_PLACEHOLDER_CONF` to your ``settings.py``.
-
-Example::
-
-    CMS_PLACEHOLDER_CONF = {
-        'col_sidebar': {
-            'plugins': ('FilePlugin', 'FlashPlugin', 'LinkPlugin', 'PicturePlugin', 'TextPlugin', 'SnippetPlugin'),
-            'name': gettext("sidebar column")
-        },
-
-        'col_left': {
-            'plugins': ('FilePlugin', 'FlashPlugin', 'LinkPlugin', 'PicturePlugin', 'TextPlugin', 'SnippetPlugin','GoogleMapPlugin','CMSTextWithTitlePlugin','CMSGalleryPlugin'),
-            'name': gettext("left column")
-        },
-
-        'col_right': {
-            'plugins': ('FilePlugin', 'FlashPlugin', 'LinkPlugin', 'PicturePlugin', 'TextPlugin', 'SnippetPlugin','GoogleMapPlugin',),
-            'name': gettext("right column")
-        },
-    }
-
-"**col_left**" and "**col_right**" are the names of two placeholders. The
-plugins list are filled with plugin class names you find in the
-``cms_plugins.py``. You can add extra context to each placeholder so
-plugin-templates can react to them.
-
-You can change the displayed name in the admin with the **name** parameter. In
-combination with gettext you can translate this names according to the language
-of the user. Additionally you can limit the number of plugins (either total or
-by type) for each placeholder with the **limits** parameter (see
-:ref:`configuration` for details).
-
-
+********
 Advanced
-========
+********
 
-:class:`CMSGalleryPlugin` can be even further customized:
 
-Because :class:`CMSPluginBase <cms.plugin_base.CMSPluginBase>` extends
-:class:`ModelAdmin <django.contrib.admin.ModelAdmin>` you can use
-all the things you are used to with normal admin classes. You can define
-inlines, the form, the form template etc.
+Plugin form
+===========
+
+Since :class:`cms.plugin_base.CMSPluginBase` extends
+:class:`django.contrib.admin.options.ModelAdmin`, you can customize the form
+for you plugins like you would customize your admin interfaces.
 
 .. note::
 
@@ -395,6 +223,7 @@ inlines, the form, the form template etc.
     plugins and to have the preview functionality automatically installed.
 
 .. _custom-plugins-handling-media:
+
 
 Handling media
 ==============
@@ -455,35 +284,24 @@ A **bad** example:
     </script>{% endaddtoblock %}
 
 
-*************************
-Plugin Context Processors
-*************************
 
-Plugin context processors are callables that modify all plugin's context before
+Plugin Context Processors
+=========================
+
+Plugin context processors are callables that modify all plugins context before
 rendering. They are enabled using the :setting:`CMS_PLUGIN_CONTEXT_PROCESSORS`
 setting.
 
 A plugin context processor takes 2 arguments:
 
-**instance**:
-
-The instance of the plugin model
-
-**placeholder**:
-
-The instance of the placeholder this plugin appears in.
+* ``instance``: The instance of the plugin model
+* ``placeholder``: The instance of the placeholder this plugin appears in.
 
 The return value should be a dictionary containing any variables to be added to
 the context.
 
 Example::
 
-    # settings.py:
-    CMS_PLUGIN_CONTEXT_PROCESSORS = (
-        'yourapp.cms_plugin_context_processors.add_verbose_name',
-    )
-
-    # yourapp.cms_plugin_context_processors.py:
     def add_verbose_name(instance, placeholder):
         '''
         This plugin context processor adds the plugin model's verbose_name to context.
@@ -491,41 +309,32 @@ Example::
         return {'verbose_name': instance._meta.verbose_name}
 
 
-*****************
-Plugin Processors
-*****************
 
-Plugin processors are callables that modify all plugin's output after rendering.
+Plugin Processors
+=================
+
+Plugin processors are callables that modify all plugins output after rendering.
 They are enabled using the :setting:`CMS_PLUGIN_PROCESSORS` setting.
 
 A plugin processor takes 4 arguments:
 
-**instance**:
+* ``instance``: The instance of the plugin model
+* ``placeholder``: The instance of the placeholder this plugin appears in.
+* ``rendered_content``: A string containing the rendered content of the plugin.
+* ``original_context``: The original context for the template used to render
+  the plugin.
 
-The instance of the plugin model
-
-**placeholder**:
-
-The instance of the placeholder this plugin appears in.
-
-**rendered_content**:
-
-A string containing the rendered content of the plugin.
-
-**original_context**:
-
-The original context for the template used to render the plugin.
-
-Note that plugin processors are also applied to plugins embedded in Text.
-Depending on what your processor does, this might break the output. For example,
-if your processor wraps the output in a ``div`` tag, you might end up having
-``div`` tags inside of ``p`` tags, which is invalid. You can prevent such cases
-by returning ``rendered_content`` unchanged if
-``instance._render_meta.text_enabled`` is ``True``, which is the case when
-rendering an embedded plugin.
+.. note:: Plugin processors are also applied to plugins embedded in Text
+          plugins (and any custom plugin allowing nested plugins). Depending on
+          what your processor does, this might break the output. For example,
+          if your processor wraps the output in a ``div`` tag, you might end up
+          having ``div`` tags inside of ``p`` tags, which is invalid. You can
+          prevent such cases by returning ``rendered_content`` unchanged if
+          ``instance._render_meta.text_enabled`` is ``True``, which is the case
+          when rendering an embedded plugin.
 
 Example
-=======
+-------
 
 Suppose you want to put wrap each plugin in the main placeholder in a colored
 box, but it would be too complicated to edit each individual plugin's template:
