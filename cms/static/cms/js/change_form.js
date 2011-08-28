@@ -137,4 +137,4 @@
             window.location = url;
         }
     }
-})(jQuery);
+})(CMS.jQuery);

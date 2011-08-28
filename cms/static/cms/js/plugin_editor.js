@@ -180,4 +180,4 @@ function loadPluginForm(target, id){
         $('#iframe_'+id).parent().html("<p>"+msg+"</p>");
     }
  
-})(jQuery);
+})(CMS.jQuery);

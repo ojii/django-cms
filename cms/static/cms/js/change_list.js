@@ -483,4 +483,4 @@
 	function addUndo(node, target, position){
 		undos.push({node:node, target:target, position:position});
 	}
-})(jQuery);
+})(CMS.jQuery);

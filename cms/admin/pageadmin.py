@@ -169,7 +169,7 @@ class PageAdmin(ModelAdmin):
             )]
         }
         js = ['%sjs/jquery.min.js' % settings.ADMIN_MEDIA_PREFIX] + [cms_static_url(path) for path in [
-                'js/plugins/admincompat.js',
+                'js/jquery.init.js',
                 'js/libs/jquery.query.js',
                 'js/libs/jquery.ui.core.js',
                 'js/libs/jquery.ui.dialog.js',

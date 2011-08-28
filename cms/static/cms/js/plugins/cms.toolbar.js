@@ -448,4 +448,4 @@ jQuery(document).ready(function ($) {
 	});
 });
 
-})(jQuery);
+})(CMS.jQuery);
