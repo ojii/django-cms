@@ -5,7 +5,7 @@
 
 /*##################################################|*/
 /* #CMS.PLACEHOLDERS# */
-jQuery(document).ready(function ($) {
+$(document).ready(function ($) {
 	/**
 	 * Placeholders
 	 * @version: 1.0.0

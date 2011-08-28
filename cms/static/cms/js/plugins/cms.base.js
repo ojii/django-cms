@@ -9,7 +9,7 @@
 (function ($) {
 /*##################################################|*/
 /* #CMS.BASE# */
-jQuery(document).ready(function ($) {
+$(document).ready(function ($) {
 	/**
 	 * Security
 	 * @version: 1.0.0

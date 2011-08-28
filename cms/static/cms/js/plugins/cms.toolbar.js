@@ -5,7 +5,7 @@
 
 /*##################################################|*/
 /* #CMS.TOOLBAR# */
-jQuery(document).ready(function ($) {
+$(document).ready(function ($) {
 
 	/**
 	 * Toolbar
