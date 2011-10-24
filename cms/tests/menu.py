@@ -10,11 +10,13 @@ from cms.test_utils.testcases import SettingsOverrideTestCase
 from cms.test_utils.util.context_managers import (SettingsOverride, 
     LanguageOverride)
 from cms.test_utils.util.mock import AttributeObject
+from cms.test_utils.util.request_factory import RequestFactory
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser, User, Permission, Group
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.template import Template, TemplateSyntaxError
+from django.template.context import RequestContext
 from menus.base import NavigationNode
 from menus.menu_pool import menu_pool, _build_nodes_inner_for_one_menu
 from menus.utils import mark_descendants, find_selected, cut_levels
@@ -932,7 +934,40 @@ class ViewPermissionMenuTests(SettingsOverrideTestCase):
             pages = [page]
             result = get_visible_pages(request, pages)
             self.assertEqual(result, [1])
-    
+            
+    def test_caching_public_for_staff(self):
+        with SettingsOverride(CMS_PUBLIC_FOR='staff'):
+            user = User.objects.create_user('user', 'user@domain.com', 'user')
+            request = RequestFactory().get('/')
+            request.user = user
+            page = create_page('A', 'nav_playground.html', 'en', in_navigation=True, published=True)
+            PagePermission.objects.create(can_view=True, user=user, page=page)
+            context = RequestContext(request)
+            tpl = Template("{% load menu_tags %}{% show_menu 0 100 100 100 %}")
+            tpl.render(context)
+            nodes = context['children']
+            # check everything
+            self.assertEqual(len(nodes), 1)
+            homenode = nodes[0]
+            self.assertEqual(homenode.id, page.pk)
+            self.assertEqual(len(homenode.children), 0)
+            
+    def test_caching_public_for_all(self):
+        with SettingsOverride(CMS_PUBLIC_FOR='all'):
+            user = User.objects.create_user('user', 'user@domain.com', 'user')
+            request = RequestFactory().get('/')
+            request.user = user
+            page = create_page('A', 'nav_playground.html', 'en', in_navigation=True, published=True)
+            PagePermission.objects.create(can_view=True, user=user, page=page)
+            context = RequestContext(request)
+            tpl = Template("{% load menu_tags %}{% show_menu 0 100 100 100 %}")
+            tpl.render(context)
+            nodes = context['children']
+            self.assertEqual(len(nodes), 1)
+            homenode = nodes[0]
+            self.assertEqual(homenode.id, page.pk)
+            self.assertEqual(len(homenode.children), 0)
+
     def test_page_permissions_num_queries(self):
         with SettingsOverride(CMS_PUBLIC_FOR='staff'):
             user = User.objects.create_user('user', 'user@domain.com', 'user')
