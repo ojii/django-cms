@@ -937,7 +937,7 @@ class ViewPermissionMenuTests(SettingsOverrideTestCase):
             
     def test_caching_public_for_staff(self):
         with SettingsOverride(CMS_PUBLIC_FOR='staff'):
-            user = User.objects.create_user('user', 'user@domain.com', 'user')
+            user = User.objects.create(username='user', is_staff=True, is_active=True)
             request = RequestFactory().get('/')
             request.user = user
             page = create_page('A', 'nav_playground.html', 'en', in_navigation=True, published=True)
@@ -954,7 +954,7 @@ class ViewPermissionMenuTests(SettingsOverrideTestCase):
             
     def test_caching_public_for_all(self):
         with SettingsOverride(CMS_PUBLIC_FOR='all'):
-            user = User.objects.create_user('user', 'user@domain.com', 'user')
+            user = User.objects.create(username='user', is_staff=True, is_active=True)
             request = RequestFactory().get('/')
             request.user = user
             page = create_page('A', 'nav_playground.html', 'en', in_navigation=True, published=True)
