@@ -1,6 +1,13 @@
+from distutils.version import LooseVersion
+import django
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from cms.models import CMSPlugin, Page
+
+extra_urlfield_kwargs = {}
+
+if LooseVersion(django.get_version()) < LooseVersion('1.5'):
+    extra_urlfield_kwargs['verify_exists'] = False
 
 class Link(CMSPlugin):
     """
@@ -8,7 +15,7 @@ class Link(CMSPlugin):
     """
 
     name = models.CharField(_("name"), max_length=256)
-    url = models.URLField(_("link"), verify_exists=False, blank=True, null=True)
+    url = models.URLField(_("link"), blank=True, null=True, **extra_urlfield_kwargs)
     page_link = models.ForeignKey(Page, verbose_name=_("page"), blank=True, null=True, help_text=_("A link to a page has priority over a text link."))
     mailto = models.EmailField(_("mailto"), blank=True, null=True, help_text=_("An email adress has priority over a text link."))
 

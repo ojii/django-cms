@@ -6,7 +6,7 @@ from datetime import datetime, date
 from django.conf import settings
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import models
-from django.db.models.base import (model_unpickle, simple_class_factory)
+from django.db.models.base import model_unpickle
 from django.db.models.query_utils import DeferredAttribute
 from django.utils.translation import ugettext_lazy as _
 
@@ -16,6 +16,18 @@ from cms.plugin_rendering import PluginContext, render_plugin
 from cms.utils.helpers import reversion_register
 
 from mptt.models import MPTTModel, MPTTModelBase
+
+try:
+    from django.db.models.base import simple_class_factory
+except ImportError:
+    def simple_class_factory(model, attrs):
+        """Used to unpickle Models without deferred fields.
+
+        We need to do this the hard way, rather than just using
+        the default __reduce__ implementation, because of a
+        __deepcopy__ problem in Python 2.4
+        """
+        return model
 
 
 class BoundRenderMeta(object):
