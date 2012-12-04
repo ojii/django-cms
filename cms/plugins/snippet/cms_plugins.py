@@ -4,7 +4,6 @@ from django.conf import settings
 from django import template
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
-from django.template.context import Context
 from models import SnippetPtr
 
 class SnippetPlugin(CMSPluginBase):
@@ -14,22 +13,17 @@ class SnippetPlugin(CMSPluginBase):
     text_enabled = True
 
     def render(self, context, instance, placeholder):
-        context.update({
-            'placeholder':placeholder,
-            'object':instance,
-        })
+        context.push()
+        context['placeholder'] = placeholder
+        context['object'] = instance
         try:
-            if instance.snippet.template:
-                t = template.loader.get_template(instance.snippet.template)
-                context.update({'html': mark_safe(instance.snippet.html)})
-                content = t.render(Context(context))
-            else:
-                t = template.Template(instance.snippet.html)
-                content = t.render(Context(context))
+            t = template.loader.get_template(instance.template)
+            content = t.render(context)
         except template.TemplateDoesNotExist, e:
             content = _('Template %(template)s does not exist.') % {'template': instance.snippet.template}
         except Exception, e:
             content = str(e)
+        context.pop()
         context.update({
             'content': mark_safe(content),
         })
