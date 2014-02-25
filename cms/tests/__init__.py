@@ -42,3 +42,4 @@ from cms.tests.check import *
 from cms.tests.frontend import *
 from cms.tests.signals import *
 from cms.tests.no_i18n import *
+from cms.tests.quality import CodeQualityTest
