@@ -44,7 +44,7 @@ class PermissionsException(Exception):
 
 
 class NoPermissionsException(PermissionsException):
-    """Can be fired when some violate action is performed on permission system. 
+    """Can be fired when some violate action is performed on permission system.
     """
 
 
@@ -59,23 +59,29 @@ class PublicVersionNeeded(Exception):
     pass
 
 
-class Deprecated(Exception): pass
+class Deprecated(Exception):
+    pass
 
 
-class DuplicatePlaceholderWarning(Warning): pass
+class DuplicatePlaceholderWarning(Warning):
+    pass
 
 
-class DontUsePageAttributeWarning(Warning): pass
+class DontUsePageAttributeWarning(Warning):
+    pass
 
 
-class CMSDeprecationWarning(Warning): pass
+class CMSDeprecationWarning(Warning):
+    pass
 
 
-class LanguageError(Exception): pass
+class LanguageError(Exception):
+    pass
 
 
-class PluginConsistencyError(Exception): pass
+class PluginConsistencyError(Exception):
+    pass
 
 
-class PlaceholderNotFound(Exception): pass
-
+class PlaceholderNotFound(Exception):
+    pass
