@@ -38,14 +38,19 @@ class ApphookPool(object):
         from cms.app_base import CMSApp
         # validate the app
         if not issubclass(app, CMSApp):
-            raise ImproperlyConfigured('CMS Apps must inherit '
-                                       'cms.app_base.CMSApp, %r does not' % app)
+            raise ImproperlyConfigured(
+                'CMS Apps must inherit cms.app_base.CMSApp, %r does not' % app
+            )
         if hasattr(app, 'menu') and not app.menus:
-            warnings.warn("You define a 'menu' attribute on your CMS App %r, "
-                          "but the 'menus' attribute is empty, did you make a typo?")
+            warnings.warn(
+                "You define a 'menu' attribute on your CMS App %r, but the "
+                "'menus' attribute is empty, did you make a typo?"
+            )
         name = app.__name__
         if name in self.apps.keys():
-            raise AppAlreadyRegistered("[%s] a cms app with this name is already registered" % name)
+            raise AppAlreadyRegistered(
+                "[%s] a cms app with this name is already registered" % name
+            )
         self.apps[name] = app
 
     def get_apphooks(self):
@@ -55,7 +60,8 @@ class ApphookPool(object):
             app = self.apps[app_name]
             if app.urls:
                 hooks.append((app_name, app.name))
-            # Unfortunately, we loose the ordering since we now have a list of tuples. Let's reorder by app_name:
+            # Unfortunately, we loose the ordering since we now have a list of
+            # tuples. Let's reorder by app_name:
         hooks = sorted(hooks, key=lambda hook: hook[1])
         return hooks
 
@@ -64,11 +70,14 @@ class ApphookPool(object):
         try:
             return self.apps[app_name]
         except KeyError:
-            # deprecated: return apphooks registered in db with urlconf name instead of apphook class name 
+            # deprecated: return apphooks registered in db with urlconf name
+            # instead of apphook class name
             for app in self.apps.values():
                 if app_name in app.urls:
                     return app
-        raise ImproperlyConfigured('No registered apphook `%s` found.' % app_name)
+        raise ImproperlyConfigured(
+            'No registered apphook `%s` found.' % app_name
+        )
 
 
 apphook_pool = ApphookPool()
