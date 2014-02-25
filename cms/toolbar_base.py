@@ -13,7 +13,10 @@ class CMSToolbar(object):
         self.app_path = app_path
         self.current_site = Site.objects.get_current()
         try:
-            self.current_lang = get_language_object(get_language_from_request(self.request), self.current_site.pk)['code']
+            self.current_lang = get_language_object(
+                get_language_from_request(self.request),
+                self.current_site.pk
+            )['code']
         except LanguageError:
             self.current_lang = None
 
