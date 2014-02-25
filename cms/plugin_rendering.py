@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
+from django.template import Template, Context
+from django.template.loader import render_to_string
+from django.utils.safestring import mark_safe
+
 from cms.models.placeholdermodel import Placeholder
-from cms.plugin_processors import (plugin_meta_context_processor, mark_safe_plugin_processor)
+from cms.plugin_processors import plugin_meta_context_processor
+from cms.plugin_processors import mark_safe_plugin_processor
 from cms.utils import get_language_from_request
 from cms.utils.compat.type_checks import string_types
 from cms.utils.conf import get_cms_setting
 from cms.utils.django_load import iterload_objects
 from cms.utils.placeholder import get_placeholder_conf
-from django.template import Template, Context
-from django.template.loader import render_to_string
-from django.utils.safestring import mark_safe
 
 # these are always called before all other plugin context processors
 DEFAULT_PLUGIN_CONTEXT_PROCESSORS = (
@@ -29,19 +31,22 @@ class PluginContext(Context):
     using the "processors" keyword argument.
     """
 
-    def __init__(self, dict, instance, placeholder, processors=None, current_app=None):
+    def __init__(self, dict, instance, placeholder, processors=None,
+                 current_app=None):
         super(PluginContext, self).__init__(dict, current_app=current_app)
         if not processors:
             processors = []
+        settings_processors = get_cms_setting('PLUGIN_CONTEXT_PROCESSORS')
         for processor in DEFAULT_PLUGIN_CONTEXT_PROCESSORS:
             self.update(processor(instance, placeholder, self))
-        for processor in iterload_objects(get_cms_setting('PLUGIN_CONTEXT_PROCESSORS')):
+        for processor in iterload_objects(settings_processors):
             self.update(processor(instance, placeholder, self))
         for processor in processors:
             self.update(processor(instance, placeholder, self))
 
 
-def render_plugin(context, instance, placeholder, template, processors=None, current_app=None):
+def render_plugin(context, instance, placeholder, template, processors=None,
+                  current_app=None):
     """
     Renders a single plugin and applies the post processors to it's rendered
     content.
@@ -65,12 +70,12 @@ def render_plugin(context, instance, placeholder, template, processors=None, cur
 
 def render_plugins(plugins, context, placeholder, processors=None):
     """
-    Renders a collection of plugins with the given context, using the appropriate processors
-    for a given placeholder name, and returns a list containing a "rendered content" string
-    for each plugin.
+    Renders a collection of plugins with the given context, using the
+    appropriate processors for a given placeholder name, and returns a list
+    containing a "rendered content" string for each plugin.
 
-    This is the main plugin rendering utility function, use this function rather than
-    Plugin.render_plugin().
+    This is the main plugin rendering utility function, use this function
+    rather than Plugin.render_plugin().
     """
     out = []
     total = len(plugins)
@@ -78,15 +83,18 @@ def render_plugins(plugins, context, placeholder, processors=None):
         plugin._render_meta.total = total
         plugin._render_meta.index = index
         context.push()
-        out.append(plugin.render_plugin(context, placeholder, processors=processors))
+        out.append(
+            plugin.render_plugin(context, placeholder, processors=processors)
+        )
         context.pop()
     return out
 
 
-def render_placeholder(placeholder, context_to_copy, name_fallback="Placeholder", lang=None, default=None):
+def render_placeholder(placeholder, context_to_copy,
+                       name_fallback="Placeholder", lang=None, default=None):
     """
-    Renders plugins for a placeholder on the given page using shallow copies of the
-    given context, and returns a string containing the rendered output.
+    Renders plugins for a placeholder on the given page using shallow copies
+    of the given context, and returns a string containing the rendered output.
     """
     from cms.utils.plugins import get_plugins
     context = context_to_copy
@@ -100,23 +108,31 @@ def render_placeholder(placeholder, context_to_copy, name_fallback="Placeholder"
         template = page.template
     else:
         template = None
-    # It's kind of duplicate of the similar call in `get_plugins`, but it's required
-    # to have a valid language in this function for `get_fallback_languages` to work
+    # It's kind of duplicate of the similar call in `get_plugins`, but it's
+    # required to have a valid language in this function for
+    # `get_fallback_languages` to work
     if lang:
         save_language = lang
     else:
         lang = get_language_from_request(request)
         save_language = lang
-    plugins = [plugin for plugin in get_plugins(request, placeholder, template, lang=lang)]
+    plugins = list(get_plugins(request, placeholder, template, lang=lang))
 
-    # Add extra context as defined in settings, but do not overwrite existing context variables,
-    # since settings are general and database/template are specific
-    # TODO this should actually happen as a plugin context processor, but these currently overwrite
-    # existing context -- maybe change this order?
+    # Add extra context as defined in settings, but do not overwrite existing
+    # context variables, since settings are general and database/template are
+    # specific
+    # TODO this should actually happen as a plugin context processor, but
+    # TODO these currently overwrite existing context -- maybe change this
+    # TODO order?
     slot = getattr(placeholder, 'slot', None)
     extra_context = {}
     if slot:
-        extra_context = get_placeholder_conf("extra_context", slot, template, {})
+        extra_context = get_placeholder_conf(
+            "extra_context",
+            slot,
+            template,
+            {}
+        )
     for key, value in extra_context.items():
         if not key in context:
             context[key] = value
@@ -128,7 +144,7 @@ def render_placeholder(placeholder, context_to_copy, name_fallback="Placeholder"
     toolbar = getattr(request, 'toolbar', None)
 
     if (getattr(toolbar, 'edit_mode', False) and
-        (not page or page.has_change_permission(request))):
+            (not page or page.has_change_permission(request))):
         edit = True
     if edit:
         from cms.middleware.toolbar import toolbar_plugin_processor
@@ -146,7 +162,14 @@ def render_placeholder(placeholder, context_to_copy, name_fallback="Placeholder"
         if not placeholder.pk in request.toolbar.placeholders:
             request.toolbar.placeholders[placeholder.pk] = placeholder
     if edit:
-        toolbar_content = mark_safe(render_placeholder_toolbar(placeholder, context, name_fallback, save_language))
+        toolbar_content = mark_safe(
+            render_placeholder_toolbar(
+                placeholder,
+                context,
+                name_fallback,
+                save_language
+            )
+        )
     if content:
         content = mark_safe("".join(content))
     elif default:
@@ -162,7 +185,8 @@ def render_placeholder(placeholder, context_to_copy, name_fallback="Placeholder"
     return result
 
 
-def render_placeholder_toolbar(placeholder, context, name_fallback, save_language):
+def render_placeholder_toolbar(placeholder, context, name_fallback,
+                               save_language):
     from cms.plugin_pool import plugin_pool
     request = context['request']
     page = placeholder.page if placeholder else None
@@ -180,7 +204,9 @@ def render_placeholder_toolbar(placeholder, context, name_fallback, save_languag
     context.push()
 
     ## to restrict child-only plugins from draggables..
-    context['allowed_plugins'] = [cls.__name__ for cls in plugin_pool.get_all_plugins(slot, page)]
+    context['allowed_plugins'] = [
+        cls.__name__ for cls in plugin_pool.get_all_plugins(slot, page)
+    ]
     context['placeholder'] = placeholder
     context['language'] = save_language
     context['page'] = page
