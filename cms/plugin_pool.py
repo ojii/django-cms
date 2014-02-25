@@ -1,9 +1,19 @@
 # -*- coding: utf-8 -*-
-from cms.utils.compat.type_checks import string_types
+import warnings
+
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.conf.urls import url, patterns, include
+from django.contrib.formtools.wizard.views import normalize_name
+from django.db import connection
+from django.db.models.fields.related import ManyToManyField
+from django.db.models.fields.related import ReverseManyRelatedObjectsDescriptor
+from django.template.defaultfilters import slugify
+from django.utils.translation import get_language, deactivate_all, activate
 from django.db.models import signals
 from django.template import TemplateDoesNotExist, TemplateSyntaxError
-from django.template.loader import find_template
-import warnings
+
+from cms.utils.compat.type_checks import string_types
 from cms.exceptions import PluginAlreadyRegistered, PluginNotRegistered
 from cms.plugin_base import CMSPluginBase
 from cms.models import CMSPlugin
@@ -11,14 +21,6 @@ from cms.utils.django_load import load, get_subclasses
 from cms.utils.helpers import reversion_register
 from cms.utils.placeholder import get_placeholder_conf
 from cms.utils.compat.dj import force_unicode
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.conf.urls import url, patterns, include
-from django.contrib.formtools.wizard.views import normalize_name
-from django.db import connection
-from django.db.models.fields.related import ManyToManyField, ReverseManyRelatedObjectsDescriptor
-from django.template.defaultfilters import slugify
-from django.utils.translation import get_language, deactivate_all, activate
 
 
 class PluginPool(object):
@@ -37,39 +39,45 @@ class PluginPool(object):
         """
         Registers the given plugin(s).
 
-        If a plugin is already registered, this will raise PluginAlreadyRegistered.
+        If a plugin is already registered, this will raise
+        PluginAlreadyRegistered.
         """
         if not issubclass(plugin, CMSPluginBase):
             raise ImproperlyConfigured(
                 "CMS Plugins must be subclasses of CMSPluginBase, %r is not."
                 % plugin
             )
-        if plugin.render_plugin and not type(plugin.render_plugin) == property or hasattr(plugin.model, 'render_template'):
-            if plugin.render_template is None and not hasattr(plugin.model, 'render_template'):
+        if (plugin.render_plugin and
+                not type(plugin.render_plugin) == property or
+                hasattr(plugin.model, 'render_template')):
+            if (plugin.render_template is None and
+                    not hasattr(plugin.model, 'render_template')):
                 raise ImproperlyConfigured(
-                    "CMS Plugins must define a render template or set render_plugin=False: %s"
-                    % plugin
+                    "CMS Plugins must define a render template or set "
+                    "render_plugin=False: %s" % plugin
                 )
             else:
                 from django.template import loader
 
-                template = hasattr(plugin.model,
-                                   'render_template') and plugin.model.render_template or plugin.render_template
+                template = hasattr(
+                    plugin.model,
+                    'render_template'
+                ) and plugin.model.render_template or plugin.render_template
                 if isinstance(template, string_types) and template:
                     try:
                         loader.get_template(template)
                     except TemplateDoesNotExist:
                         raise ImproperlyConfigured(
-                            "CMS Plugins must define a render template (%s) that exist: %s"
-                            % (plugin, template)
+                            "CMS Plugins must define a render template (%s) "
+                            "that exist: %s" % (plugin, template)
                         )
                     except TemplateSyntaxError:
                         pass
         else:
             if plugin.allow_children:
                 raise ImproperlyConfigured(
-                    "CMS Plugins can not define render_plugin=False and allow_children=True: %s"
-                    % plugin
+                    "CMS Plugins can not define render_plugin=False and "
+                    "allow_children=True: %s" % plugin
                 )
         plugin_name = plugin.__name__
         if plugin_name in self.plugins:
@@ -80,14 +88,25 @@ class PluginPool(object):
 
         plugin.value = plugin_name
         self.plugins[plugin_name] = plugin
-        from cms.signals import pre_save_plugins, post_delete_plugins, pre_delete_plugins
+        from cms.signals import pre_save_plugins
+        from cms.signals import post_delete_plugins
+        from cms.signals import pre_delete_plugins
 
-        signals.pre_save.connect(pre_save_plugins, sender=plugin.model,
-                                 dispatch_uid='cms_pre_save_plugin_%s' % plugin_name)
-        signals.post_delete.connect(post_delete_plugins, sender=CMSPlugin,
-                                    dispatch_uid='cms_post_delete_plugin_%s' % plugin_name)
-        signals.pre_delete.connect(pre_delete_plugins, sender=CMSPlugin,
-                                   dispatch_uid='cms_pre_delete_plugin_%s' % plugin_name)
+        signals.pre_save.connect(
+            pre_save_plugins,
+            sender=plugin.model,
+            dispatch_uid='cms_pre_save_plugin_%s' % plugin_name
+        )
+        signals.post_delete.connect(
+            post_delete_plugins,
+            sender=CMSPlugin,
+            dispatch_uid='cms_post_delete_plugin_%s' % plugin_name
+        )
+        signals.pre_delete.connect(
+            pre_delete_plugins,
+            sender=CMSPlugin,
+            dispatch_uid='cms_pre_delete_plugin_%s' % plugin_name
+        )
         if 'reversion' in settings.INSTALLED_APPS:
             try:
                 from reversion.registration import RegistrationError
@@ -102,7 +121,8 @@ class PluginPool(object):
         """
         Unregisters the given plugin(s).
 
-        If a plugin isn't already registered, this will raise PluginNotRegistered.
+        If a plugin isn't already registered, this will raise
+        PluginNotRegistered.
         """
         plugin_name = plugin.__name__
         if plugin_name not in self.plugins:
@@ -131,46 +151,65 @@ class PluginPool(object):
 
                 splitter = '%s_' % model._meta.app_label
                 table_name = model._meta.db_table
-                if (table_name not in table_names
-                and splitter in table_name):
+                if (table_name not in table_names and
+                        splitter in table_name):
                     old_db_name = table_name
                     splitted = table_name.split(splitter, 1)
                     table_name = 'cmsplugin_%s' % splitted[1]
                     if table_name in table_names:
                         model._meta.db_table = table_name
                         warnings.warn(
-                            'please rename the table "%s" to "%s" in %s\nThe compatibility code will be removed in 3.1' % (
-                                table_name, old_db_name, model._meta.app_label), DeprecationWarning)
+                            'please rename the table "%s" to "%s" in %s\nThe '
+                            'compatibility code will be removed in 3.1' % (
+                                table_name, old_db_name, model._meta.app_label
+                            ),
+                            DeprecationWarning
+                        )
                 for att_name in model.__dict__.keys():
                     att = model.__dict__[att_name]
                     if isinstance(att, ManyToManyField):
                         table_name = att.rel.through._meta.db_table
                         if (table_name not in table_names
-                        and splitter in table_name):
+                                and splitter in table_name):
                             old_db_name = table_name
                             table_name.split(splitter, 1)
                             table_name = 'cmsplugin_%s' % splitted[1]
                             if table_name in table_names:
                                 att.rel.through._meta.db_table = table_name
                                 warnings.warn(
-                                    'please rename the table "%s" to "%s" in %s\nThe compatibility code will be removed in 3.1' % (
-                                        table_name, old_db_name, model._meta.app_label), DeprecationWarning)
+                                    'please rename the table "%s" to "%s" in '
+                                    '%s\nThe compatibility code will be '
+                                    'removed in 3.1' % (
+                                        table_name,
+                                        old_db_name,
+                                        model._meta.app_label
+                                    ),
+                                    DeprecationWarning
+                                )
                     elif isinstance(att, ReverseManyRelatedObjectsDescriptor):
                         table_name = att.through._meta.db_table
                         if (table_name not in table_names
-                        and splitter in table_name):
+                                and splitter in table_name):
                             old_db_name = table_name
                             table_name.split(splitter, 1)
                             table_name = 'cmsplugin_%s_items' % splitted[1]
                             if table_name in table_names:
                                 att.through._meta.db_table = table_name
                                 warnings.warn(
-                                    'please rename the table "%s" to "%s" in %s\nThe compatibility code will be removed in 3.1' % (
-                                        table_name, old_db_name, model._meta.app_label), DeprecationWarning)
+                                    'please rename the table "%s" to "%s" in '
+                                    '%s\nThe compatibility code will be '
+                                    'removed in 3.1' % (
+                                        table_name,
+                                        old_db_name,
+                                        model._meta.app_label
+                                    ),
+                                    DeprecationWarning
+                                )
 
         self.patched = True
 
-    def get_all_plugins(self, placeholder=None, page=None, setting_key="plugins", include_page_only=True):
+    def get_all_plugins(self, placeholder=None, page=None,
+                        setting_key="plugins", include_page_only=True):
         self.discover_plugins()
         self.set_plugin_meta()
         plugins = list(self.plugins.values())
@@ -228,7 +267,8 @@ class PluginPool(object):
     def get_patterns(self):
         self.discover_plugins()
 
-        # We want untranslated name of the plugin for its slug so we deactivate translation
+        # We want untranslated name of the plugin for its slug so we
+        # deactivate translation
         lang = get_language()
         deactivate_all()
 
@@ -236,9 +276,12 @@ class PluginPool(object):
             url_patterns = []
             for plugin in self.get_all_plugins():
                 p = plugin()
-                slug = slugify(force_unicode(normalize_name(p.__class__.__name__)))
-                url_patterns += patterns('',
-                                         url(r'^plugin/%s/' % (slug,), include(p.plugin_urls)),
+                slug = slugify(
+                    force_unicode(normalize_name(p.__class__.__name__))
+                )
+                url_patterns += patterns(
+                    '',
+                    url(r'^plugin/%s/' % (slug,), include(p.plugin_urls)),
                 )
         finally:
             # Reactivate translation
@@ -248,4 +291,3 @@ class PluginPool(object):
 
 
 plugin_pool = PluginPool()
-
