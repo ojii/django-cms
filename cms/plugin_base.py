@@ -1,10 +1,18 @@
 # -*- coding: utf-8 -*-
-try:
-    from django.contrib.admin.options import (RenameBaseModelAdminMethods as
-                                              ModelAdminMetaClass)
-except ImportError:
-    from django.forms.widgets import (MediaDefiningClass as ModelAdminMetaClass)
 import re
+
+from django.core.urlresolvers import reverse
+from django.contrib import admin
+from django.core.exceptions import ImproperlyConfigured
+from django.forms.models import ModelForm
+from django.utils.encoding import smart_str
+from django.utils.translation import ugettext_lazy as _
+try:
+    from django.contrib.admin.options import (
+        RenameBaseModelAdminMethods as ModelAdminMetaClass)
+except ImportError:
+    from django.forms.widgets import (
+        MediaDefiningClass as ModelAdminMetaClass)
 
 from cms.constants import PLUGIN_MOVE_ACTION, PLUGIN_COPY_ACTION
 from cms.utils import get_cms_setting
@@ -14,24 +22,21 @@ from cms.utils.placeholder import get_placeholder_conf
 from cms.utils.compat.dj import force_unicode, python_2_unicode_compatible
 from cms.exceptions import SubClassNeededError, Deprecated
 from cms.models import CMSPlugin
-from django.core.urlresolvers import reverse
-from django.contrib import admin
-from django.core.exceptions import ImproperlyConfigured
-from django.forms.models import ModelForm
-from django.utils.encoding import smart_str
-from django.utils.translation import ugettext_lazy as _
 
 
 class CMSPluginBaseMetaclass(ModelAdminMetaClass):
     """
-    Ensure the CMSPlugin subclasses have sane values and set some defaults if 
+    Ensure the CMSPlugin subclasses have sane values and set some defaults if
     they're not given.
     """
     def __new__(cls, name, bases, attrs):
         super_new = super(CMSPluginBaseMetaclass, cls).__new__
-        parents = [base for base in bases if isinstance(base, CMSPluginBaseMetaclass)]
+        parents = [
+            base for base in bases if isinstance(base, CMSPluginBaseMetaclass)
+        ]
         if not parents:
-            # If this is CMSPluginBase itself, and not a subclass, don't do anything
+            # If this is CMSPluginBase itself, and not a subclass,
+            # don't do anything
             return super_new(cls, name, bases, attrs)
         new_plugin = super_new(cls, name, bases, attrs)
         # validate model is actually a CMSPlugin subclass.
@@ -44,13 +49,16 @@ class CMSPluginBaseMetaclass(ModelAdminMetaClass):
         # validate the template:
         if not hasattr(new_plugin, 'render_template'):
             raise ImproperlyConfigured(
-                "CMSPluginBase subclasses must have a render_template attribute"
+                "CMSPluginBase subclasses must have a render_template "
+                "attribute"
             )
         # Set the default form
         if not new_plugin.form:
             form_meta_attrs = {
                 'model': new_plugin.model,
-                'exclude': ('position', 'placeholder', 'language', 'plugin_type')
+                'exclude': (
+                    'position', 'placeholder', 'language', 'plugin_type'
+                )
             }
             form_attrs = {
                 'Meta': type('Meta', (object,), form_meta_attrs)
@@ -64,7 +72,8 @@ class CMSPluginBaseMetaclass(ModelAdminMetaClass):
                 if not f.auto_created and f.editable:
                     if hasattr(f, 'advanced'):
                         advanced_fields.append(f.name)
-                    else: basic_fields.append(f.name)
+                    else:
+                        basic_fields.append(f.name)
             if advanced_fields:
                 new_plugin.fieldsets = [
                     (
@@ -76,8 +85,8 @@ class CMSPluginBaseMetaclass(ModelAdminMetaClass):
                     (
                         _('Advanced options'),
                         {
-                            'fields' : advanced_fields,
-                            'classes' : ('collapse',)
+                            'fields': advanced_fields,
+                            'classes': ('collapse',)
                         }
                     )
                 ]
@@ -125,7 +134,6 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
         },
     }
 
-
     def __init__(self, model=None, admin_site=None):
         if admin_site:
             super(CMSPluginBase, self).__init__(self.model, admin_site)
@@ -137,7 +145,6 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
         self.placeholder = None
         self.page = None
 
-
     def render(self, context, instance, placeholder):
         context['instance'] = instance
         context['placeholder'] = placeholder
@@ -147,7 +154,8 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
     def parent(self):
         return self.cms_plugin_instance.parent
 
-    def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
+    def render_change_form(self, request, context, add=False, change=False,
+                           form_url='', obj=None):
         """
         We just need the popup interface here
         """
@@ -158,12 +166,14 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
             'CMS_MEDIA_URL': get_cms_setting('MEDIA_URL'),
         })
 
-        return super(CMSPluginBase, self).render_change_form(request, context, add, change, form_url, obj)
+        return super(CMSPluginBase, self).render_change_form(
+            request, context, add, change, form_url, obj
+        )
 
     def has_add_permission(self, request, *args, **kwargs):
         """Permission handling change - if user is allowed to change the page
         he must be also allowed to add/change/delete plugins..
-        
+
         Not sure if there will be plugin permission requirement in future, but
         if, then this must be changed.
         """
@@ -191,7 +201,9 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
         # remember the saved object
         self.saved_object = obj
 
-        return super(CMSPluginBase, self).save_model(request, obj, form, change)
+        return super(CMSPluginBase, self).save_model(
+            request, obj, form, change
+        )
 
     def response_change(self, request, obj):
         """
@@ -210,9 +222,11 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
         """
         self.object_successfully_changed = True
         if not DJANGO_1_4:
-            post_url_continue = reverse('admin:cms_page_edit_plugin',
-                    args=(obj._get_pk_val(),),
-                    current_app=self.admin_site.name)
+            post_url_continue = reverse(
+                'admin:cms_page_edit_plugin',
+                args=(obj._get_pk_val(),),
+                current_app=self.admin_site.name
+            )
             kwargs.setdefault('post_url_continue', post_url_continue)
         return super(CMSPluginBase, self).response_add(request, obj, **kwargs)
 
@@ -228,7 +242,7 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
     def icon_src(self, instance):
         """
         Overwrite this if text_enabled = True
- 
+
         Return the URL for an image to be used for an icon for this
         plugin instance in a text editor.
         """
@@ -244,19 +258,28 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
 
     def get_fieldsets(self, request, obj=None):
         """
-        Same as from base class except if there are no fields, show an info message.
+        Same as from base class except if there are no fields, show an info
+        message.
         """
         fieldsets = super(CMSPluginBase, self).get_fieldsets(request, obj)
 
         for name, data in fieldsets:
-            if data.get('fields'):  # if fieldset with non-empty fields is found, return fieldsets
+            # if fieldset with non-empty fields is found, return fieldsets
+            if data.get('fields'):
                 return fieldsets
 
         if self.inlines:
-            return []  # if plugin has inlines but no own fields return empty fieldsets to remove empty white fieldset
+            # if plugin has inlines but no own fields return empty fieldsets
+            # to remove empty white fieldset
+            return []
 
-        try:  # if all fieldsets are empty (assuming there is only one fieldset then) add description
-            fieldsets[0][1]['description'] = _('There are no further settings for this plugin. Please press save.')
+        # if all fieldsets are empty (assuming there is only one fieldset
+        # then) add description
+        try:
+            fieldsets[0][1]['description'] = _(
+                'There are no further settings for this plugin. '
+                'Please press save.'
+            )
         except KeyError:
             pass
 
@@ -268,9 +291,14 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
             template = page.template
 
         ## config overrides..
-        ph_conf = get_placeholder_conf('child_classes', slot, template, default={})
+        ph_conf = get_placeholder_conf(
+            'child_classes',
+            slot,
+            template,
+            default={}
+        )
         child_classes = ph_conf.get(self.__class__.__name__, None)
-        
+
         if child_classes:
             return child_classes
         if self.child_classes:
@@ -286,9 +314,14 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
             template = page.template
 
         ## config overrides..
-        ph_conf = get_placeholder_conf('parent_classes', slot, template, default={})
+        ph_conf = get_placeholder_conf(
+            'parent_classes',
+            slot,
+            template,
+            default={}
+        )
         parent_classes = ph_conf.get(self.__class__.__name__, None)
-        
+
         if parent_classes:
             return parent_classes
         elif self.parent_classes:
@@ -324,18 +357,19 @@ class CMSPluginBase(with_metaclass(CMSPluginBaseMetaclass, admin.ModelAdmin)):
     def __str__(self):
         return self.name
 
-    #===========================================================================
+    #==========================================================================
     # Deprecated APIs
-    #===========================================================================
+    #==========================================================================
 
     @property
     def pluginmedia(self):
         raise Deprecated(
-            "CMSPluginBase.pluginmedia is deprecated in favor of django-sekizai"
+            "CMSPluginBase.pluginmedia is deprecated in favor of "
+            "django-sekizai"
         )
-
 
     def get_plugin_media(self, request, context, plugin):
         raise Deprecated(
-            "CMSPluginBase.get_plugin_media is deprecated in favor of django-sekizai"
+            "CMSPluginBase.get_plugin_media is deprecated in favor of "
+            "django-sekizai"
         )
