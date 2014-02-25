@@ -6,8 +6,12 @@ from cms.apphook_pool import apphook_pool
 from cms.appresolver import get_app_urls
 from cms.models import Title
 from cms.utils import get_template_from_request, get_language_from_request
-from cms.utils.i18n import get_fallback_languages, force_language, get_public_languages, get_redirect_on_fallback, \
-    get_language_list, is_language_prefix_patterns_used
+from cms.utils.i18n import get_fallback_languages
+from cms.utils.i18n import force_language
+from cms.utils.i18n import get_public_languages
+from cms.utils.i18n import get_redirect_on_fallback
+from cms.utils.i18n import get_language_list
+from cms.utils.i18n import is_language_prefix_patterns_used
 from cms.utils.page_resolver import get_page_from_request
 from cms.test_utils.util.context_managers import SettingsOverride
 from django.conf import settings
@@ -20,7 +24,11 @@ from django.utils.http import urlquote
 
 def _handle_no_page(request, slug):
     if not slug and settings.DEBUG:
-        return TemplateResponse(request, "cms/welcome.html", RequestContext(request))
+        return TemplateResponse(
+            request,
+            "cms/welcome.html",
+            RequestContext(request)
+        )
     raise Http404('CMS: Page not found for "%s"' % slug)
 
 
@@ -37,7 +45,8 @@ def details(request, slug):
         return _handle_no_page(request, slug)
 
     current_language = get_language_from_request(request)
-    # Check that the current page is available in the desired (current) language
+    # Check that the current page is available in the desired (current)
+    # language
     available_languages = []
     page_languages = list(page.get_languages())
     if hasattr(request, 'user') and request.user.is_staff:
@@ -54,7 +63,7 @@ def details(request, slug):
         attrs = '?preview=1'
         if 'draft' in request.GET:
             attrs += '&draft=1'
-        # Check that the language is in FRONTEND_LANGUAGES:
+    # Check that the language is in FRONTEND_LANGUAGES:
     if not current_language in user_languages:
         #are we on root?
         if not slug:
@@ -63,7 +72,8 @@ def details(request, slug):
             for language in available_languages:
                 languages.append((language, language))
             if languages:
-                with SettingsOverride(LANGUAGES=languages, LANGUAGE_CODE=languages[0][0]):
+                with SettingsOverride(
+                        LANGUAGES=languages, LANGUAGE_CODE=languages[0][0]):
                     #get supported language
                     new_language = get_language_from_request(request)
                     if new_language in get_public_languages():
@@ -82,15 +92,19 @@ def details(request, slug):
             if alt_lang in available_languages:
                 if get_redirect_on_fallback(current_language):
                     with force_language(alt_lang):
-                        path = page.get_absolute_url(language=alt_lang, fallback=True)
-                        # In the case where the page is not available in the
+                        path = page.get_absolute_url(
+                            language=alt_lang,
+                            fallback=True
+                        )
+                    # In the case where the page is not available in the
                     # preferred language, *redirect* to the fallback page. This
                     # is a design decision (instead of rendering in place)).
                     return HttpResponseRedirect(path + attrs)
                 else:
                     found = True
         if not found:
-            # There is a page object we can't find a proper language to render it
+            # There is a page object we can't find a proper language to render
+            # it
             _handle_no_page(request, slug)
 
     if apphook_pool.get_apphooks():
@@ -105,7 +119,8 @@ def details(request, slug):
         except Title.DoesNotExist:
             app_urls = []
         skip_app = False
-        if not page.is_published(current_language) and request.toolbar.edit_mode:
+        if (not page.is_published(current_language) and
+                request.toolbar.edit_mode):
             skip_app = True
         if app_urls and not skip_app:
             app = apphook_pool.get_apphook(app_urls)
@@ -118,16 +133,22 @@ def details(request, slug):
                 return view(request, *args, **kwargs)
             except Resolver404:
                 pass
-                # Check if the page has a redirect url defined for this language.
+    # Check if the page has a redirect url defined for this language.
     redirect_url = page.get_redirect(language=current_language)
     if redirect_url:
         if (is_language_prefix_patterns_used() and redirect_url[0] == "/"
-        and not redirect_url.startswith('/%s/' % current_language)):
+                and not redirect_url.startswith('/%s/' % current_language)):
             # add language prefix to url
-            redirect_url = "/%s/%s" % (current_language, redirect_url.lstrip("/"))
-            # prevent redirect to self
+            redirect_url = "/%s/%s" % (
+                current_language, redirect_url.lstrip("/")
+            )
+        # prevent redirect to self
         own_urls = [
-            'http%s://%s%s' % ('s' if request.is_secure() else '', request.get_host(), request.path),
+            'http%s://%s%s' % (
+                's' if request.is_secure() else '',
+                request.get_host(),
+                request.path
+            ),
             '/%s' % request.path,
             request.path,
         ]
@@ -136,10 +157,17 @@ def details(request, slug):
 
     # permission checks
     if page.login_required and not request.user.is_authenticated():
-        return redirect_to_login(urlquote(request.get_full_path()), settings.LOGIN_URL)
+        return redirect_to_login(
+            urlquote(request.get_full_path()),
+            settings.LOGIN_URL
+        )
 
-    template_name = get_template_from_request(request, page, no_current_page=True)
-    # fill the context 
+    template_name = get_template_from_request(
+        request,
+        page,
+        no_current_page=True
+    )
+    # fill the context
     context['lang'] = current_language
     context['current_page'] = page
     context['has_change_permissions'] = page.has_change_permission(request)
