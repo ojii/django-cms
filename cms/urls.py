@@ -5,13 +5,21 @@ from django.conf import settings
 from django.conf.urls import url, patterns
 
 if settings.APPEND_SLASH:
-    reg = url(r'^(?P<slug>[0-9A-Za-z-_.//]+)/$', details, name='pages-details-by-slug')
+    reg = url(
+        r'^(?P<slug>[0-9A-Za-z-_.//]+)/$',
+        details,
+        name='pages-details-by-slug'
+    )
 else:
-    reg = url(r'^(?P<slug>[0-9A-Za-z-_.//]+)$', details, name='pages-details-by-slug')
+    reg = url(
+        r'^(?P<slug>[0-9A-Za-z-_.//]+)$',
+        details,
+        name='pages-details-by-slug'
+    )
 
 urlpatterns = [
     # Public pages
-    url(r'^$', details, {'slug':''}, name='pages-root'),
+    url(r'^$', details, {'slug': ''}, name='pages-root'),
     reg,
 ]
 
@@ -21,5 +29,5 @@ if apphook_pool.get_apphooks():
     """
     from cms.appresolver import get_app_patterns
     urlpatterns = get_app_patterns() + urlpatterns
-    
+
 urlpatterns = patterns('', *urlpatterns)
