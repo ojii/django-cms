@@ -4,7 +4,9 @@
 TEMPLATE_INHERITANCE_MAGIC = 'INHERIT'
 REFRESH_PAGE = 'REFRESH_PAGE'
 URL_CHANGE = 'URL_CHANGE'
-RIGHT = object() # this is a trick so "foo is RIGHT" will only ever work for this, same goes for LEFT.
+# This is a trick so "foo is RIGHT" will only ever work for this,
+# Same goes for LEFT.
+RIGHT = object()
 LEFT = object()
 
 # Plugin actions
