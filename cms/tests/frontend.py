@@ -351,7 +351,13 @@ class PlaceholderBasicTests(CMSLiveTests, SettingsOverrideTestCase):
         copy = submenu.find_element_by_css_selector('a[data-rel="copy"]')
         copy.click()
 
-        time.sleep(0.2)
+        def wait_for_clipboard(driver):
+            try:
+                return driver.find_element_by_css_selector('.cms_clipboard')
+            except NoSuchElementException:
+                return False
+
+        WebDriverWait(self.driver, 5).until(wait_for_clipboard)
         clipboard = self.driver.find_element_by_css_selector('.cms_clipboard')
 
         WebDriverWait(self.driver, 10).until(lambda driver: clipboard.is_displayed())
