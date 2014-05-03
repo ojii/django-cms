@@ -187,3 +187,17 @@ def is_valid_url(url, instance, create_links=True, site=None):
                                    len(url_clashes)) %
                     {'pages': ', '.join(url_clashes), 'url': url, 'instance': instance}))
     return True
+
+
+def get_last_page_in_path(path):
+    bits = path.lstrip('/').split('/')
+    candidates = [''] + [
+        '{}/'.format('/'.join(bits[:i])) for i in range(1, len(bits))
+    ]
+    try:
+        return Page.objects.public().filter(
+            site=Site.objects.get_current(),
+            title_set__path__in=candidates
+        ).order_by('-level')[0]
+    except IndexError:
+        return None

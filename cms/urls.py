@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from cms.apphook_pool import apphook_pool
 from cms.views import details
 from django.conf import settings
 from django.conf.urls import url, patterns
@@ -15,11 +14,4 @@ urlpatterns = [
     reg,
 ]
 
-if apphook_pool.get_apphooks():
-    """If there are some application urls, add special resolver, so we will
-    have standard reverse support.
-    """
-    from cms.appresolver import get_app_patterns
-    urlpatterns = get_app_patterns() + urlpatterns
-    
 urlpatterns = patterns('', *urlpatterns)

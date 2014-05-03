@@ -75,18 +75,20 @@ def _verify_apphook(apphook, namespace):
     """
     apphook_pool.discover_apps()
     if hasattr(apphook, '__module__') and issubclass(apphook, CMSApp):
-        try:
-            assert apphook in apphook_pool.apps.values()
-        except AssertionError:
-            print(apphook_pool.apps.values())
-            raise
+        if apphook not in apphook_pool.get_apphook_classes():
+            raise KeyError(
+                "Apphook {!r} not found, available apphooks: {!r}".format(
+                    apphook, apphook_pool.get_apphook_classes()
+                )
+            )
         return apphook.__name__
     elif isinstance(apphook, string_types):
-        try:
-            assert apphook in apphook_pool.apps
-        except AssertionError:
-            print(apphook_pool.apps.values())
-            raise
+        if apphook not in apphook_pool.get_apphook_names():
+            raise KeyError(
+                "Apphook {!r} not found, available apphooks: {!r}".format(
+                    apphook, apphook_pool.get_apphook_names()
+                )
+            )
         apphook_name = apphook
     else:
         raise TypeError("apphook must be string or CMSApp instance")

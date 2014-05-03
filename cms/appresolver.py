@@ -4,14 +4,14 @@ import sys
 from cms.apphook_pool import apphook_pool
 from cms.utils.compat.type_checks import string_types
 from cms.utils.i18n import force_language, get_language_list
-from cms.models.pagemodel import Page
+from cms.utils.page_resolver import get_last_page_in_path
 
 from django.conf import settings
 from django.conf.urls import patterns
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import RegexURLResolver, Resolver404, reverse, \
-    RegexURLPattern
+    RegexURLPattern, get_resolver
 from django.utils.importlib import import_module
 from django.utils.translation import get_language
 
@@ -37,17 +37,27 @@ def applications_page_check(request, current_page=None, path=None):
     for lang in get_language_list():
         if path.startswith(lang + "/"):
             path = path[len(lang + "/"):]
-    for resolver in APP_RESOLVERS:
+            break
+
+    # find "deepest" page on the path
+    page = get_last_page_in_path(path)
+    if page is None:
+        return None
+    page_root_url = reverse('pages-root')
+    relative_path = '/'.format(
+        path[len(page.get_absolute_url()) - len(page_root_url):]
+    )
+    # check if we're actually on an apphook
+    resolver = get_resolver(None)
+
+    for app_resolver in resolver.apphook_resolvers.values():
         try:
-            page_id = resolver.resolve_page_id(path)
-            # yes, it is application page
-            page = Page.objects.public().get(id=page_id)
-            # If current page was matched, then we have some override for content
-            # from cms, but keep current page. Otherwise return page to which was application assigned.
-            return page
+            app_resolver.resolve(relative_path)
         except Resolver404:
             # Raised if the page is not managed by an apphook
             pass
+        else:
+            return page
     return None
 
 

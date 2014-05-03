@@ -70,5 +70,13 @@ class ApphookPool(object):
                     return app
         raise ImproperlyConfigured('No registered apphook `%s` found.' % app_name)
 
+    def get_apphook_names(self):
+        self.discover_apps()
+        return self.apps.keys()
+
+    def get_apphook_classes(self):
+        self.discover_apps()
+        return self.apps.values()
+
 
 apphook_pool = ApphookPool()
