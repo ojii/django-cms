@@ -9,6 +9,8 @@ gettext = lambda s: s
 
 urlpatterns = []
 
+THIS_DIR = os.path.dirname(__file__)
+
 
 def configure(db_url, **extra):
     from django.conf import settings
@@ -39,6 +41,9 @@ def configure(db_url, **extra):
         USE_I18N=True,
         MEDIA_ROOT='/media/',
         STATIC_ROOT='/static/',
+        STATICFILES_DIRS=[
+            os.path.join(THIS_DIR, '..', 'tests', 'static'),
+        ],
         CMS_MEDIA_ROOT='/cms-media/',
         CMS_MEDIA_URL='/cms-media/',
         MEDIA_URL='/media/',
@@ -62,9 +67,10 @@ def configure(db_url, **extra):
             "cms.context_processors.cms_settings",
             "sekizai.context_processors.sekizai",
             "django.core.context_processors.static",
+            "viceroy.contrib.django.context_processor.viceroy",
         ],
         TEMPLATE_DIRS=[
-            os.path.abspath(os.path.join(os.path.dirname(__file__), 'project', 'templates'))
+            os.path.abspath(os.path.join(THIS_DIR, 'project', 'templates'))
         ],
         MIDDLEWARE_CLASSES=[
             #'debug_toolbar.middleware.DebugToolbarMiddleware',

@@ -78,5 +78,13 @@
 	</div>
 </div>
 	{% render_block "js" %}
+    {% if VICEROY_TESTING %}
+    <script src="{{ STATIC_URL }}libs/jasmine/jasmine.js"></script>
+    <script src="{{ STATIC_URL }}libs/jasmine/jasmine-html.js"></script>
+    <script src="{{ STATIC_URL }}libs/jasmine/boot.js"></script>
+    <script src="/viceroy/viceroy.js"></script>
+    <script src="/viceroy/jasmine-bridge.js"></script>
+    <script src="{{ STATIC_URL }}tests.js"></script>
+    {% endif %}
 </body>
 </html> 
