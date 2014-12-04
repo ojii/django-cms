@@ -24,4 +24,5 @@ django-debug-toolbar
 -e git+git://github.com/divio/djangocms-teaser.git#egg=djangocms-teaser
 -e git+git://github.com/divio/djangocms-video.git#egg=djangocms-video
 -e git+git://github.com/divio/djangocms-link.git#egg=djangocms-link
-pyflakes
+pep8==1.5.7
+pyflakes==0.8.1
