@@ -47,3 +47,4 @@ from cms.tests.signals import *  # nopyflakes
 from cms.tests.no_i18n import *  # nopyflakes
 from cms.tests.cache import *  # nopyflakes
 from cms.tests.widgets import *  # nopyflakes
+from cms.tests.style import *  # nopyflakes
